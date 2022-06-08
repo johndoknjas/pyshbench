@@ -52,9 +52,10 @@ print("{:>3} {:>10} {:>10} {:>8}".format("run","base","test","diff"))
 
 for i in range(runs):
 	# Start both processes. This is non-blocking.
-	base_process = subprocess.Popen([sys.argv[1],"bench"], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    
+	base_process = subprocess.Popen([r"/mnt/c/Users/johnd/Documents/Coding Projects/pyshbench/stockfish","bench"], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
 	psutil.Process(base_process.pid).cpu_affinity(cpuset[i%2])
-	test_process = subprocess.Popen([sys.argv[2],"bench"], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+	test_process = subprocess.Popen([r"/mnt/c/Users/johnd/Documents/Coding Projects/pyshbench/my-stockfish","bench"], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
 	psutil.Process(test_process.pid).cpu_affinity(cpuset[(i+1)%2])
 
 	# Wait for processes to finish and grep nps results in their stderr output
