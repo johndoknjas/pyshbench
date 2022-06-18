@@ -1,6 +1,7 @@
 Just replace the current "stockfish" binary with whatever the current master's binary is, and replace "my-stockfish" with
-the binary of your branch that you want to test. Then run with "python3 pyshbench.py a b". a and b can be anything, don't affect
-program's run due to your changes to the code (other than what it calls the two SF versions when outputting final results).
+the binary of your branch that you want to test. Then run with "python3 pyshbench.py a b 50". a and b can be anything, don't affect
+program's run due to your changes to the code (other than what it calls the two SF versions when outputting final results). The 50 in the example
+here is if you wanted to run 50 trials.
 
 Was useful solving bug I had before:
 
