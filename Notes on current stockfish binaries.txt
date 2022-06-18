@@ -1,0 +1,4 @@
+"stockfish" is stockfish binary on master (June 17)
+Rest are binaries of commits on my "speed-optimizations" branch:
+"my-stockfish-834b21e" is my stockfish at this commit (first commit on branch, with all changes).
+"my-stockfish" is binary of commit eb1acf5
