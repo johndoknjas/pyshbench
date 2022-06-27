@@ -8,89 +8,131 @@ import platform
 import os.path
 import psutil
 
+
 def erf_inv(x):
-	"""Inverse of math.erf()"""
-	a = 8 * (math.pi - 3) / (3 * math.pi*(4 - math.pi))
-	y = math.log(1 - x * x)
-	z = 2 / (math.pi * a) + y / 2
-	return math.copysign(math.sqrt(math.sqrt(z * z - y / a) - z), x)
+    """Inverse of math.erf()"""
+    a = 8 * (math.pi - 3) / (3 * math.pi * (4 - math.pi))
+    y = math.log(1 - x * x)
+    z = 2 / (math.pi * a) + y / 2
+    return math.copysign(math.sqrt(math.sqrt(z * z - y / a) - z), x)
+
 
 def CDF(q):
-	"""CDF of the standard Gaussian law"""
-	return 0.5 * (1 + math.erf(q / math.sqrt(2)))
+    """CDF of the standard Gaussian law"""
+    return 0.5 * (1 + math.erf(q / math.sqrt(2)))
+
 
 def Quantile(p):
-	"""Quantile function of the standard Gaussian law"""
-	assert(0 <= p and p <= 1)
-	return math.sqrt(2)*erf_inv(2*p-1)
+    """Quantile function of the standard Gaussian law"""
+    assert 0 <= p and p <= 1
+    return math.sqrt(2) * erf_inv(2 * p - 1)
+
 
 def rightstr(s, l):
-	if len(s) > l:
-		return "..."+s[3-l:]
-	else:
-		return s
+    if len(s) > l:
+        return "..." + s[3 - l :]
+    else:
+        return s
 
-if (len(sys.argv) != 4 or int(sys.argv[3]) < 2):
-	exit("Usage:\n" + sys.argv[0] + " base test #runs\nwhere #runs >= 2")
 
-base, test, diff = [], [], []
-runs = int(sys.argv[3])
-exp = re.compile(b"Nodes/second\s*: (\d+)")
+if int(sys.argv[3]) < 2 or len(sys.argv) % 3 != 1:
+    exit("Usage:\n" + sys.argv[0] + " base test #runs\nwhere #runs >= 2")
 
-# determine CPU sets to run on
-# this assumes that logical cpus on the same core are numbered sequentially
-num_cores = psutil.cpu_count(logical=False)
-num_cpus = psutil.cpu_count()
-cpu_step = int(num_cpus / num_cores)
-cpuset = []
-cpuset.append(list())
-cpuset.append(list())
-for i in range(0, cpu_step):
-	cpuset[0].extend(list(range(i, num_cpus, cpu_step*2)))
-	cpuset[1].extend(list(range(i+cpu_step, num_cpus, cpu_step*2)))
-print("{:>3} {:>10} {:>10} {:>8}".format("run","base","test","diff"))
+for argv_index in range(1, len(sys.argv), 3):
+    base, test, diff = [], [], []
+    runs = int(sys.argv[argv_index + 2])
+    exp = re.compile(b"Nodes/second\s*: (\d+)")
 
-for i in range(runs):
-	# Start both processes. This is non-blocking.
-    
-	base_process = subprocess.Popen([r"/mnt/c/Users/johnd/Documents/Coding Projects/pyshbench/stockfish","bench"], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-	psutil.Process(base_process.pid).cpu_affinity(cpuset[i%2])
-	test_process = subprocess.Popen([r"/mnt/c/Users/johnd/Documents/Coding Projects/pyshbench/my-stockfish","bench"], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-	psutil.Process(test_process.pid).cpu_affinity(cpuset[(i+1)%2])
+    # determine CPU sets to run on
+    # this assumes that logical cpus on the same core are numbered sequentially
+    num_cores = psutil.cpu_count(logical=False)
+    num_cpus = psutil.cpu_count()
+    cpu_step = int(num_cpus / num_cores)
+    cpuset = []
+    cpuset.append(list())
+    cpuset.append(list())
+    for i in range(0, cpu_step):
+        cpuset[0].extend(list(range(i, num_cpus, cpu_step * 2)))
+        cpuset[1].extend(list(range(i + cpu_step, num_cpus, cpu_step * 2)))
+    print("{:>3} {:>10} {:>10} {:>8}".format("run", "base", "test", "diff"))
 
-	# Wait for processes to finish and grep nps results in their stderr output
-	base.append(int(exp.search(base_process.stderr.read()).group(1)))
-	test.append(int(exp.search(test_process.stderr.read()).group(1)))
+    for i in range(runs):
+        # Start both processes. This is non-blocking.
 
-	diff.append(test[i] - base[i])
-	print("{:>3} {:>10n} {:>10n} {:>+8n}".format (i + 1, base[i], test[i], diff[i]))
+        base_process = subprocess.Popen(
+            [
+                (
+                    r"/mnt/c/Users/johnd/Documents/Coding Projects/pyshbench/"
+                    + sys.argv[argv_index]
+                ),
+                "bench",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        psutil.Process(base_process.pid).cpu_affinity(cpuset[i % 2])
+        test_process = subprocess.Popen(
+            [
+                (
+                    r"/mnt/c/Users/johnd/Documents/Coding Projects/pyshbench/"
+                    + sys.argv[argv_index + 1]
+                ),
+                "bench",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        psutil.Process(test_process.pid).cpu_affinity(cpuset[(i + 1) % 2])
 
-base_mean = statistics.mean(base)
-test_mean = statistics.mean(test)
-diff_mean = statistics.mean(diff)
+        # Wait for processes to finish and grep nps results in their stderr output
+        base.append(int(exp.search(base_process.stderr.read()).group(1)))
+        test.append(int(exp.search(test_process.stderr.read()).group(1)))
 
-base_sdev = statistics.stdev(base, base_mean) / math.sqrt(runs)
-test_sdev = statistics.stdev(test, test_mean) / math.sqrt(runs)
-diff_sdev = statistics.stdev(diff, diff_mean) / math.sqrt(runs)
-print("\nResult of {:3n} runs\n==================".format(runs))
-print("base ({:<15s}) = {:>10n}  +/- {:n}".format(rightstr(sys.argv[1],15), round(base_mean), round(Quantile(0.975) * base_sdev)))
-print("test ({:<15s}) = {:>10n}  +/- {:n}".format(rightstr(sys.argv[2],15), round(test_mean), round(Quantile(0.975) * test_sdev)))
-print("{:22s} = {:>+10n}  +/- {:n}".format("diff", round(diff_mean), round(Quantile(0.975) * diff_sdev)))
-print("\nspeedup        = {:>+6.4f}".format(diff_mean / base_mean))
-print("P(speedup > 0) = {:>7.4f}".format(CDF(diff_mean / diff_sdev)))
+        diff.append(test[i] - base[i])
+        print("{:>3} {:>10n} {:>10n} {:>+8n}".format(i + 1, base[i], test[i], diff[i]))
 
-cpu = str()
-if os.path.exists("/proc/cpuinfo"):
-	exp = re.compile ("^model name\s+:\s+(.*)$")
-	with open('/proc/cpuinfo','r') as infile:
-		for line in infile:
-			m = exp.match(line)
-			if m:
-				cpu = m.group(1)
-				break
-if cpu == "":
-	cpu = platform.processor()
-if cpu == "":
-	cpu = "unknown"
-print ("\nCPU:",num_cores,"x",cpu)
-print ("Hyperthreading:", "off" if num_cpus==num_cores else "on","\n")
+    base_mean = statistics.mean(base)
+    test_mean = statistics.mean(test)
+    diff_mean = statistics.mean(diff)
+
+    base_sdev = statistics.stdev(base, base_mean) / math.sqrt(runs)
+    test_sdev = statistics.stdev(test, test_mean) / math.sqrt(runs)
+    diff_sdev = statistics.stdev(diff, diff_mean) / math.sqrt(runs)
+    print("\nResult of {:3n} runs\n==================".format(runs))
+    print(
+        "base ({:<15s}) = {:>10n}  +/- {:n}".format(
+            rightstr(sys.argv[argv_index], 15),
+            round(base_mean),
+            round(Quantile(0.975) * base_sdev),
+        )
+    )
+    print(
+        "test ({:<15s}) = {:>10n}  +/- {:n}".format(
+            rightstr(sys.argv[argv_index + 1], 15),
+            round(test_mean),
+            round(Quantile(0.975) * test_sdev),
+        )
+    )
+    print(
+        "{:22s} = {:>+10n}  +/- {:n}".format(
+            "diff", round(diff_mean), round(Quantile(0.975) * diff_sdev)
+        )
+    )
+    print("\nspeedup        = {:>+6.4f}".format(diff_mean / base_mean))
+    print("P(speedup > 0) = {:>7.4f}".format(CDF(diff_mean / diff_sdev)))
+
+    cpu = str()
+    if os.path.exists("/proc/cpuinfo"):
+        exp = re.compile("^model name\s+:\s+(.*)$")
+        with open("/proc/cpuinfo", "r") as infile:
+            for line in infile:
+                m = exp.match(line)
+                if m:
+                    cpu = m.group(1)
+                    break
+    if cpu == "":
+        cpu = platform.processor()
+    if cpu == "":
+        cpu = "unknown"
+    print("\nCPU:", num_cores, "x", cpu)
+    print("Hyperthreading:", "off" if num_cpus == num_cores else "on", "\n")
