@@ -7,6 +7,7 @@ import sys
 import platform
 import os.path
 import psutil
+import copy
 
 
 def erf_inv(x):
@@ -33,6 +34,45 @@ def rightstr(s, l):
         return "..." + s[3 - l :]
     else:
         return s
+
+
+def print_results(baseP, testP, diffP, argvP, runs, argv_index):
+    base = copy.deepcopy(baseP)
+    test = copy.deepcopy(testP)
+    diff = copy.deepcopy(diffP)
+    argv = copy.deepcopy(argvP)
+
+    base_mean = statistics.mean(base)
+    test_mean = statistics.mean(test)
+    diff_mean = statistics.mean(diff)
+
+    base_sdev = statistics.stdev(base, base_mean) / math.sqrt(runs)
+    test_sdev = statistics.stdev(test, test_mean) / math.sqrt(runs)
+    diff_sdev = statistics.stdev(diff, diff_mean) / math.sqrt(runs)
+
+    print("\nResult of {:3n} runs\n==================".format(runs))
+    print(
+        "base ({:<15s}) = {:>10n}  +/- {:n}".format(
+            rightstr(argv[argv_index], 15),
+            round(base_mean),
+            round(Quantile(0.975) * base_sdev),
+        )
+    )
+    print(
+        "test ({:<15s}) = {:>10n}  +/- {:n}".format(
+            rightstr(argv[argv_index + 1], 15),
+            round(test_mean),
+            round(Quantile(0.975) * test_sdev),
+        )
+    )
+    print(
+        "{:22s} = {:>+10n}  +/- {:n}".format(
+            "diff", round(diff_mean), round(Quantile(0.975) * diff_sdev)
+        )
+    )
+    print("\nspeedup        = {:>+6.4f}".format(diff_mean / base_mean))
+    print("P(speedup > 0) = {:>7.4f}".format(CDF(diff_mean / diff_sdev)))
+    print("\n")
 
 
 if int(sys.argv[3]) < 2 or len(sys.argv) % 3 != 1:
@@ -91,36 +131,11 @@ for argv_index in range(1, len(sys.argv), 3):
         diff.append(test[i] - base[i])
         print("{:>3} {:>10n} {:>10n} {:>+8n}".format(i + 1, base[i], test[i], diff[i]))
 
-    base_mean = statistics.mean(base)
-    test_mean = statistics.mean(test)
-    diff_mean = statistics.mean(diff)
+        if (i + 1) % 5 == 0 and i > 1 and i < runs - 1:
+            print_results(base, test, diff, sys.argv, i + 1, argv_index)
+    # for loop
 
-    base_sdev = statistics.stdev(base, base_mean) / math.sqrt(runs)
-    test_sdev = statistics.stdev(test, test_mean) / math.sqrt(runs)
-    diff_sdev = statistics.stdev(diff, diff_mean) / math.sqrt(runs)
-    print("\nResult of {:3n} runs\n==================".format(runs))
-    print(
-        "base ({:<15s}) = {:>10n}  +/- {:n}".format(
-            rightstr(sys.argv[argv_index], 15),
-            round(base_mean),
-            round(Quantile(0.975) * base_sdev),
-        )
-    )
-    print(
-        "test ({:<15s}) = {:>10n}  +/- {:n}".format(
-            rightstr(sys.argv[argv_index + 1], 15),
-            round(test_mean),
-            round(Quantile(0.975) * test_sdev),
-        )
-    )
-    print(
-        "{:22s} = {:>+10n}  +/- {:n}".format(
-            "diff", round(diff_mean), round(Quantile(0.975) * diff_sdev)
-        )
-    )
-    print("\nspeedup        = {:>+6.4f}".format(diff_mean / base_mean))
-    print("P(speedup > 0) = {:>7.4f}".format(CDF(diff_mean / diff_sdev)))
-
+    print_results(base, test, diff, sys.argv, runs, argv_index)
     cpu = str()
     if os.path.exists("/proc/cpuinfo"):
         exp = re.compile("^model name\s+:\s+(.*)$")

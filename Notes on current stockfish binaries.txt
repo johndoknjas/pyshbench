@@ -1,4 +1,5 @@
 "stockfish" is stockfish binary on master (June 17)
-Rest are binaries of commits on my "speed-optimizations" branch:
-"my-stockfish-834b21e" is my stockfish at this commit (first commit on branch, with all changes).
-"my-stockfish" is binary of commit eb1acf5
+Binaries with "branch-1" suffix are my commits on the "speed-optimizations" branch:
+E.g., "my-stockfish-834b21e" is my stockfish at this commit (first commit on branch, with all changes).
+
+"my-stockfish" is binary of commit eedd5 in "branch-prediction-2". If benchmarking now goes well, I'll open a fishtest for it.
