@@ -8,6 +8,7 @@ import platform
 import os.path
 import psutil
 import copy
+from datetime import datetime
 
 
 def erf_inv(x):
@@ -36,7 +37,9 @@ def rightstr(s, l):
         return s
 
 
-def print_results(baseP, testP, diffP, argvP, runs, argv_index):
+def print_results(
+    baseP, testP, diffP, argvP, runs, argv_index, done_trial, file_id=None
+):
     base = copy.deepcopy(baseP)
     test = copy.deepcopy(testP)
     diff = copy.deepcopy(diffP)
@@ -50,29 +53,35 @@ def print_results(baseP, testP, diffP, argvP, runs, argv_index):
     test_sdev = statistics.stdev(test, test_mean) / math.sqrt(runs)
     diff_sdev = statistics.stdev(diff, diff_mean) / math.sqrt(runs)
 
-    print("\nResult of {:3n} runs\n==================".format(runs))
-    print(
-        "base ({:<15s}) = {:>10n}  +/- {:n}".format(
+    output = (
+        "\nResult of {:3n} runs\n------------------".format(runs)
+        + "\n"
+        + "base ({:<15s}) = {:>10n}  +/- {:n}".format(
             rightstr(argv[argv_index], 15),
             round(base_mean),
             round(Quantile(0.975) * base_sdev),
         )
-    )
-    print(
-        "test ({:<15s}) = {:>10n}  +/- {:n}".format(
+        + "\n"
+        + "test ({:<15s}) = {:>10n}  +/- {:n}".format(
             rightstr(argv[argv_index + 1], 15),
             round(test_mean),
             round(Quantile(0.975) * test_sdev),
         )
-    )
-    print(
-        "{:22s} = {:>+10n}  +/- {:n}".format(
+        + "\n"
+        + "{:22s} = {:>+10n}  +/- {:n}".format(
             "diff", round(diff_mean), round(Quantile(0.975) * diff_sdev)
         )
+        + "\n"
+        + "\nspeedup        = {:>+6.4f}".format(diff_mean / base_mean)
+        + "\n"
+        + "P(speedup > 0) = {:>7.4f}".format(CDF(diff_mean / diff_sdev))
+        + "\n\n"
     )
-    print("\nspeedup        = {:>+6.4f}".format(diff_mean / base_mean))
-    print("P(speedup > 0) = {:>7.4f}".format(CDF(diff_mean / diff_sdev)))
-    print("\n")
+
+    print(output)
+    if done_trial:
+        with open(("results " + file_id + ".txt"), "a") as the_file:
+            the_file.write(output)
 
 
 if int(sys.argv[3]) < 2 or len(sys.argv) % 3 != 1:
@@ -82,6 +91,7 @@ for argv_index in range(1, len(sys.argv), 3):
     base, test, diff = [], [], []
     runs = int(sys.argv[argv_index + 2])
     exp = re.compile(b"Nodes/second\s*: (\d+)")
+    file_id = datetime.today().strftime("%Y-%m-%d")
 
     # determine CPU sets to run on
     # this assumes that logical cpus on the same core are numbered sequentially
@@ -132,10 +142,10 @@ for argv_index in range(1, len(sys.argv), 3):
         print("{:>3} {:>10n} {:>10n} {:>+8n}".format(i + 1, base[i], test[i], diff[i]))
 
         if (i + 1) % 5 == 0 and i > 1 and i < runs - 1:
-            print_results(base, test, diff, sys.argv, i + 1, argv_index)
+            print_results(base, test, diff, sys.argv, i + 1, argv_index, False)
     # for loop
 
-    print_results(base, test, diff, sys.argv, runs, argv_index)
+    print_results(base, test, diff, sys.argv, runs, argv_index, True, file_id=file_id)
     cpu = str()
     if os.path.exists("/proc/cpuinfo"):
         exp = re.compile("^model name\s+:\s+(.*)$")
