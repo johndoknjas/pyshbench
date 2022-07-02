@@ -84,10 +84,10 @@ def print_results(
             the_file.write(output)
 
 
-if int(sys.argv[3]) < 2 or len(sys.argv) % 3 != 1:
-    exit("Usage:\n" + sys.argv[0] + " base test #runs\nwhere #runs >= 2")
+if int(sys.argv[3]) < 2 or len(sys.argv) % 4 != 1:
+    exit("Bad input")
 
-for argv_index in range(1, len(sys.argv), 3):
+for argv_index in range(1, len(sys.argv), 4):
     base, test, diff = [], [], []
     runs = int(sys.argv[argv_index + 2])
     exp = re.compile(b"Nodes/second\s*: (\d+)")
@@ -108,6 +108,10 @@ for argv_index in range(1, len(sys.argv), 3):
 
     for i in range(runs):
         # Start both processes. This is non-blocking.
+        
+        bench_command = "bench"
+        if int(sys.argv[argv_index+3]) > 1:
+            bench_command += (" 16 " + sys.argv[argv_index+3] + " 13 default depth mixed")
 
         base_process = subprocess.Popen(
             [
@@ -115,19 +119,20 @@ for argv_index in range(1, len(sys.argv), 3):
                     r"/mnt/c/Users/johnd/Documents/Coding Projects/pyshbench/"
                     + sys.argv[argv_index]
                 ),
-                "bench",
+                bench_command,
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
         )
         psutil.Process(base_process.pid).cpu_affinity(cpuset[i % 2])
+        
         test_process = subprocess.Popen(
             [
                 (
                     r"/mnt/c/Users/johnd/Documents/Coding Projects/pyshbench/"
                     + sys.argv[argv_index + 1]
                 ),
-                "bench",
+                bench_command,
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,

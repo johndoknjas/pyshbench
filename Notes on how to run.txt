@@ -1,7 +1,8 @@
-"python3 pyshbench.py x y z"
-   - Where x is the binary of the default branch, y is the binary of your patch, and z is the number of trials you want to run.
-   - You can also decide to do multiple tests in one run if you want, by adding more group(s) of three fields after x y z.
-   - E.g., "python3 pyshbench.py x1 y1 z1 x2 y2 z2".
+"python3 pyshbench.py x y z t"
+   - Where x is the binary of the default branch, y is the binary of your patch, and z is the number of trials you want to run, and
+     t is the number of threads to use for each binary.
+   - You can also decide to do multiple tests in one run if you want, by adding more group(s) of four fields after x y z w.
+   - E.g., "python3 pyshbench.py x1 y1 z1 w1 x2 y2 z2 w2".
 
 Was useful solving bug I had before:
 
